@@ -1,0 +1,13 @@
+# Build artifacts
+*.dll
+*.obj
+*.lib
+*.exp
+*.pdb
+*.msix
+
+# Generated at build time
+claude_path.h
+
+# Old .NET project
+ClaudeCodeContextMenu/

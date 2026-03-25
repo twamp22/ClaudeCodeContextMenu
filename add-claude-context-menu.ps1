@@ -170,12 +170,7 @@ Set-ItemProperty -Path "$clsidKey\InprocServer32" -Name "(Default)" -Value (Join
 Set-ItemProperty -Path "$clsidKey\InprocServer32" -Name "ThreadingModel" -Value "Both"
 Write-Host "  Registered CLSID {$clsid}" -ForegroundColor Green
 
-# 9. Shell verb with ExplorerCommandHandler
-New-Item -Path $shellKey -Force | Out-Null
-Set-ItemProperty -Path $shellKey -Name "ExplorerCommandHandler" -Value "{$clsid}"
-Write-Host "  Created shell verb." -ForegroundColor Green
-
-# 10. AppxManifest.xml
+# 9. AppxManifest.xml (no separate shell verb — the AppX package handles both menus)
 $manifestPath = Join-Path $installDir "AppxManifest.xml"
 @"
 <?xml version="1.0" encoding="utf-8"?>

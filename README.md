@@ -4,7 +4,7 @@ Adds a **Claude Code** dropdown to Windows 11's modern Explorer right-click menu
 
 ![Windows 11 Context Menu](https://img.shields.io/badge/Windows_11-Context_Menu-0078D6?style=flat&logo=windows11)
 
-<img width="519" height="480" alt="image" src="https://github.com/user-attachments/assets/e1abec12-4082-4bab-8406-3d40abf0fc95" />
+<img width="429" height="339" alt="image" src="https://github.com/user-attachments/assets/f15d4b86-1ed9-4788-a076-98b45966bc6d" />
 
 
 ## Menu Items

@@ -6,7 +6,6 @@
 #include <shlwapi.h>
 
 /* ── GUIDs ───────────────────────────────────────────────────────────── */
-
 /* {E3C26D71-5A2F-4B89-9C7E-A1D3F6B84E52} - parent "Claude Code" menu */
 static const CLSID CLSID_ClaudeCode = {
     0xE3C26D71, 0x5A2F, 0x4B89,
@@ -21,11 +20,12 @@ static const IID IID_IEnumExplorerCommand = {
 
 /* Path injected at compile time via claude_path.h; falls back to bare name (PATH lookup) */
 #ifdef CLAUDE_PATH_H
-#include "claude_path.h"
+#  include "claude_path.h"
 #endif
 #ifndef CLAUDE_EXE_PATH
-#define CLAUDE_EXE_PATH L"claude.exe"
+#  define CLAUDE_EXE_PATH L"claude.exe"
 #endif
+
 static const wchar_t CLAUDE_EXE[] = CLAUDE_EXE_PATH;
 static LONG g_dllRef = 0;
 
@@ -50,6 +50,7 @@ static wchar_t *GetFolderFromShellItems(IShellItemArray *psia) {
 static void LaunchClaude(IShellItemArray *psia, const wchar_t *extraArgs) {
     wchar_t *folder = GetFolderFromShellItems(psia);
     wchar_t cmdLine[1024];
+
     if (extraArgs && extraArgs[0])
         wsprintfW(cmdLine, L"cmd.exe /k \"\"%s\" %s\"", CLAUDE_EXE, extraArgs);
     else
@@ -69,10 +70,10 @@ static void LaunchClaude(IShellItemArray *psia, const wchar_t *extraArgs) {
 
 typedef struct {
     IExplorerCommandVtbl *lpVtbl;
-    LONG refCount;
-    const wchar_t *title;
-    const wchar_t *tooltip;
-    const wchar_t *args;     /* extra CLI args, or NULL */
+    LONG                  refCount;
+    const wchar_t        *title;
+    const wchar_t        *tooltip;
+    const wchar_t        *args;   /* extra CLI args, or NULL */
 } SubCommand;
 
 static HRESULT STDMETHODCALLTYPE Sub_QI(IExplorerCommand *This, REFIID riid, void **ppv) {
@@ -81,41 +82,51 @@ static HRESULT STDMETHODCALLTYPE Sub_QI(IExplorerCommand *This, REFIID riid, voi
     }
     *ppv = NULL; return E_NOINTERFACE;
 }
+
 static ULONG STDMETHODCALLTYPE Sub_AddRef(IExplorerCommand *This) {
     return InterlockedIncrement(&((SubCommand *)This)->refCount);
 }
+
 static ULONG STDMETHODCALLTYPE Sub_Release(IExplorerCommand *This) {
     SubCommand *sc = (SubCommand *)This;
     LONG r = InterlockedDecrement(&sc->refCount);
     if (r == 0) { HeapFree(GetProcessHeap(), 0, sc); InterlockedDecrement(&g_dllRef); }
     return r;
 }
+
 static HRESULT STDMETHODCALLTYPE Sub_GetTitle(IExplorerCommand *This, IShellItemArray *p, LPWSTR *out) {
     (void)p; return SHStrDupW(((SubCommand *)This)->title, out);
 }
+
 static HRESULT STDMETHODCALLTYPE Sub_GetIcon(IExplorerCommand *This, IShellItemArray *p, LPWSTR *out) {
     (void)This; (void)p;
     wchar_t buf[MAX_PATH + 8];
     wsprintfW(buf, L"%s,0", CLAUDE_EXE);
     return SHStrDupW(buf, out);
 }
+
 static HRESULT STDMETHODCALLTYPE Sub_GetToolTip(IExplorerCommand *This, IShellItemArray *p, LPWSTR *out) {
     (void)p; return SHStrDupW(((SubCommand *)This)->tooltip, out);
 }
+
 static HRESULT STDMETHODCALLTYPE Sub_GetCanonicalName(IExplorerCommand *This, GUID *g) {
     (void)This; *g = CLSID_ClaudeCode; return S_OK;
 }
+
 static HRESULT STDMETHODCALLTYPE Sub_GetState(IExplorerCommand *This, IShellItemArray *p, BOOL b, EXPCMDSTATE *s) {
     (void)This; (void)p; (void)b; *s = ECS_ENABLED; return S_OK;
 }
+
 static HRESULT STDMETHODCALLTYPE Sub_Invoke(IExplorerCommand *This, IShellItemArray *psia, IBindCtx *pbc) {
     (void)pbc;
     LaunchClaude(psia, ((SubCommand *)This)->args);
     return S_OK;
 }
+
 static HRESULT STDMETHODCALLTYPE Sub_GetFlags(IExplorerCommand *This, EXPCMDFLAGS *f) {
     (void)This; *f = ECF_DEFAULT; return S_OK;
 }
+
 static HRESULT STDMETHODCALLTYPE Sub_EnumSub(IExplorerCommand *This, IEnumExplorerCommand **pp) {
     (void)This; *pp = NULL; return E_NOTIMPL;
 }
@@ -143,12 +154,12 @@ static SubCommand *CreateSubCommand(const wchar_t *title, const wchar_t *tooltip
    IEnumExplorerCommand — enumerates the sub-commands
    ═══════════════════════════════════════════════════════════════════════ */
 
-#define NUM_SUBCMDS 2
+#define NUM_SUBCMDS 3
 
 typedef struct {
     IEnumExplorerCommandVtbl *lpVtbl;
-    LONG refCount;
-    ULONG index;
+    LONG   refCount;
+    ULONG  index;
 } SubCmdEnum;
 
 static HRESULT STDMETHODCALLTYPE Enum_QI(IEnumExplorerCommand *This, REFIID riid, void **ppv) {
@@ -157,9 +168,11 @@ static HRESULT STDMETHODCALLTYPE Enum_QI(IEnumExplorerCommand *This, REFIID riid
     }
     *ppv = NULL; return E_NOINTERFACE;
 }
+
 static ULONG STDMETHODCALLTYPE Enum_AddRef(IEnumExplorerCommand *This) {
     return InterlockedIncrement(&((SubCmdEnum *)This)->refCount);
 }
+
 static ULONG STDMETHODCALLTYPE Enum_Release(IEnumExplorerCommand *This) {
     SubCmdEnum *e = (SubCmdEnum *)This;
     LONG r = InterlockedDecrement(&e->refCount);
@@ -178,13 +191,19 @@ static HRESULT STDMETHODCALLTYPE Enum_Next(IEnumExplorerCommand *This,
         switch (e->index) {
         case 0:
             sc = CreateSubCommand(
-                L"Open Claude Code Here",
+                L"Open (Default)",
                 L"Launch Claude Code in this folder",
                 NULL);
             break;
         case 1:
             sc = CreateSubCommand(
-                L"YOLO Claude, YOLO!",
+                L"Open (Auto)",
+                L"Launch Claude Code with auto mode (AI-managed permissions)",
+                L"--enable-auto-mode");
+            break;
+        case 2:
+            sc = CreateSubCommand(
+                L"Open (YOLO)",
                 L"Launch Claude Code with --dangerously-skip-permissions",
                 L"--dangerously-skip-permissions");
             break;
@@ -194,7 +213,6 @@ static HRESULT STDMETHODCALLTYPE Enum_Next(IEnumExplorerCommand *This,
         fetched++;
         e->index++;
     }
-
     if (pceltFetched) *pceltFetched = fetched;
     return (fetched == celt) ? S_OK : S_FALSE;
 }
@@ -204,9 +222,11 @@ static HRESULT STDMETHODCALLTYPE Enum_Skip(IEnumExplorerCommand *This, ULONG cel
     e->index += celt;
     return (e->index <= NUM_SUBCMDS) ? S_OK : S_FALSE;
 }
+
 static HRESULT STDMETHODCALLTYPE Enum_Reset(IEnumExplorerCommand *This) {
     ((SubCmdEnum *)This)->index = 0; return S_OK;
 }
+
 static HRESULT STDMETHODCALLTYPE Enum_Clone(IEnumExplorerCommand *This, IEnumExplorerCommand **pp) {
     (void)This; *pp = NULL; return E_NOTIMPL;
 }
@@ -241,39 +261,49 @@ static HRESULT STDMETHODCALLTYPE Par_QI(IExplorerCommand *This, REFIID riid, voi
     }
     *ppv = NULL; return E_NOINTERFACE;
 }
+
 static ULONG STDMETHODCALLTYPE Par_AddRef(IExplorerCommand *This) {
     return InterlockedIncrement(&((ParentCmd *)This)->refCount);
 }
+
 static ULONG STDMETHODCALLTYPE Par_Release(IExplorerCommand *This) {
     ParentCmd *p = (ParentCmd *)This;
     LONG r = InterlockedDecrement(&p->refCount);
     if (r == 0) { HeapFree(GetProcessHeap(), 0, p); InterlockedDecrement(&g_dllRef); }
     return r;
 }
+
 static HRESULT STDMETHODCALLTYPE Par_GetTitle(IExplorerCommand *This, IShellItemArray *p, LPWSTR *out) {
     (void)This; (void)p; return SHStrDupW(L"Claude Code", out);
 }
+
 static HRESULT STDMETHODCALLTYPE Par_GetIcon(IExplorerCommand *This, IShellItemArray *p, LPWSTR *out) {
     (void)This; (void)p;
     wchar_t buf[MAX_PATH + 8];
     wsprintfW(buf, L"%s,0", CLAUDE_EXE);
     return SHStrDupW(buf, out);
 }
+
 static HRESULT STDMETHODCALLTYPE Par_GetToolTip(IExplorerCommand *This, IShellItemArray *p, LPWSTR *out) {
     (void)This; (void)p; return SHStrDupW(L"Claude Code options", out);
 }
+
 static HRESULT STDMETHODCALLTYPE Par_GetCanonicalName(IExplorerCommand *This, GUID *g) {
     (void)This; *g = CLSID_ClaudeCode; return S_OK;
 }
+
 static HRESULT STDMETHODCALLTYPE Par_GetState(IExplorerCommand *This, IShellItemArray *p, BOOL b, EXPCMDSTATE *s) {
     (void)This; (void)p; (void)b; *s = ECS_ENABLED; return S_OK;
 }
+
 static HRESULT STDMETHODCALLTYPE Par_Invoke(IExplorerCommand *This, IShellItemArray *p, IBindCtx *b) {
     (void)This; (void)p; (void)b; return E_NOTIMPL; /* parent is a container, not invokable */
 }
+
 static HRESULT STDMETHODCALLTYPE Par_GetFlags(IExplorerCommand *This, EXPCMDFLAGS *f) {
     (void)This; *f = ECF_HASSUBCOMMANDS; return S_OK;
 }
+
 static HRESULT STDMETHODCALLTYPE Par_EnumSub(IExplorerCommand *This, IEnumExplorerCommand **ppEnum) {
     (void)This;
     SubCmdEnum *e = CreateEnum();
@@ -301,8 +331,10 @@ static HRESULT STDMETHODCALLTYPE CF_QI(IClassFactory *This, REFIID riid, void **
     }
     *ppv = NULL; return E_NOINTERFACE;
 }
+
 static ULONG STDMETHODCALLTYPE CF_AddRef(IClassFactory *This)  { (void)This; return 2; }
 static ULONG STDMETHODCALLTYPE CF_Release(IClassFactory *This) { (void)This; return 1; }
+
 static HRESULT STDMETHODCALLTYPE CF_CreateInstance(IClassFactory *This,
     IUnknown *pOuter, REFIID riid, void **ppv)
 {
@@ -317,6 +349,7 @@ static HRESULT STDMETHODCALLTYPE CF_CreateInstance(IClassFactory *This,
     cmd->lpVtbl->Release((IExplorerCommand *)cmd);
     return hr;
 }
+
 static HRESULT STDMETHODCALLTYPE CF_LockServer(IClassFactory *This, BOOL fLock) {
     (void)This;
     if (fLock) InterlockedIncrement(&g_dllRef); else InterlockedDecrement(&g_dllRef);
